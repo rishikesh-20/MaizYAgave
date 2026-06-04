@@ -1,0 +1,132 @@
+.app-card {
+  width: 100%;
+  max-width: 640px;
+  background: rgba(30, 24, 18, 0.92);
+  border: 1px solid rgba(212, 168, 75, 0.35);
+  border-radius: 12px;
+  padding: 1.75rem 2rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.app-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  letter-spacing: 0.04em;
+  color: #e8c468;
+}
+
+.app-header p {
+  margin: 0.35rem 0 0;
+  color: #b8a88a;
+  font-size: 0.95rem;
+}
+
+.prompt-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.9rem;
+  color: #c9b896;
+}
+
+.prompt-input {
+  width: 100%;
+  min-height: 5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(212, 168, 75, 0.4);
+  border-radius: 8px;
+  background: #120e0a;
+  color: #f5f0e8;
+  font-size: 1rem;
+  resize: vertical;
+}
+
+.prompt-input:focus {
+  outline: 2px solid rgba(232, 196, 104, 0.5);
+  outline-offset: 1px;
+}
+
+.prompt-input:disabled {
+  opacity: 0.65;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.controls button {
+  flex: 1;
+  min-width: 7rem;
+  padding: 0.65rem 1rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.controls button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.controls button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.btn-play {
+  background: linear-gradient(180deg, #c9a227, #8a6b12);
+  color: #1a1410;
+}
+
+.btn-stop {
+  background: #4a3f32;
+  color: #f5f0e8;
+}
+
+.btn-steer {
+  background: #2a4a3a;
+  color: #d4f0dc;
+}
+
+.status-panel {
+  margin-top: 1.25rem;
+  padding: 0.85rem 1rem;
+  border-radius: 8px;
+  background: #120e0a;
+  border: 1px solid rgba(212, 168, 75, 0.25);
+}
+
+.status-panel .status-line {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.status-panel .status-line strong {
+  color: #e8c468;
+}
+
+.status-panel .status-detail {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  color: #9a8b72;
+}
+
+.status-panel.error .status-line strong {
+  color: #e87a68;
+}
+
+.tip {
+  margin: 1rem 0 0;
+  font-size: 0.8rem;
+  color: #7a6f5c;
+  line-height: 1.45;
+}

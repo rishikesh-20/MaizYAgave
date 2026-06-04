@@ -2,27 +2,64 @@
 
 Welcome to the dance party!
 
-MaizYAgave is a project at the intersection of maíz (corn) and agave—explore, build, and contribute as the repo grows.
-
-## Getting started
-
-1. Clone this repository.
-2. Review the project structure below.
-3. Open an issue or pull request when you are ready to contribute.
+MaizYAgave streams live instrumental music using [Google Lyria RealTime](https://ai.google.dev/gemini-api/docs/realtime-music-generation) (experimental). Enter a text prompt, press Play, and steer the sound by updating the prompt while music plays.
 
 ## Project structure
 
 ```
 MaizYAgave/
-├── README.md          # You are here
-├── LICENSE            # MIT License
-└── .gitignore         # Common ignore patterns
+├── backend/           # FastAPI + Lyria WebSocket relay
+├── frontend/          # React (Vite) + Web Audio playback
+├── docs/
+│   └── VERIFICATION.md   # Browser test checklist (required for release)
+├── .env.example
+└── README.md
 ```
 
-## Contributing
+## Prerequisites
 
-Contributions are welcome. Please open an issue to discuss larger changes before submitting a pull request.
+- Python 3.12+
+- Node.js 20+
+- A [Gemini API key](https://aistudio.google.com/apikey) with access to Lyria RealTime (`v1alpha`)
+
+## Setup
+
+1. Copy environment file and add your API key:
+
+   ```bash
+   cp .env.example .env
+   # Edit .env and set GEMINI_API_KEY=...
+   ```
+
+2. Install and run the backend:
+
+   ```bash
+   cd backend
+   pip install -e .
+   uvicorn app.main:app --reload --port 8000
+   ```
+
+3. Install and run the frontend (separate terminal):
+
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+4. Open http://localhost:5173 — enter a prompt, click **Play**, then **Update sound** to steer while playing.
+
+## Verification
+
+Feature verification is tracked in [docs/VERIFICATION.md](docs/VERIFICATION.md). All core flows (V1–V5) must pass in a real browser before considering a release complete.
+
+## Notes
+
+- Lyria RealTime is **experimental** (`lyria-realtime-exp`, API `v1alpha`). Behavior and quotas may change.
+- Output is **instrumental only** (no lyrics).
+- After steering, the mix may take **5–10 seconds** to settle into the new style.
+- The API key stays on the server; the browser only connects to the local FastAPI WebSocket relay.
 
 ## License
 
-This project is licensed under the MIT License—see [LICENSE](LICENSE) for details.
+MIT — see [LICENSE](LICENSE).
