@@ -4,23 +4,22 @@ import {
   type ServerState,
   type StatusPayload,
 } from "./api/musicSocket";
-import { PromptForm } from "./components/PromptForm";
-import { StatusBar } from "./components/StatusBar";
-import { TransportControls } from "./components/TransportControls";
+import { Navbar } from "./components/Navbar";
+import { WordCloud } from "./components/WordCloud";
+import {
+  MAX_MOOD_SELECTIONS,
+  MIN_MOOD_SELECTIONS,
+} from "./constants/moodWords";
+import { moodsToPrompt } from "./utils/promptFromMoods";
 import "./App.css";
 
-const DEFAULT_PROMPT = "Minimal techno, driving kick, dark synth pads, 128 BPM";
-const STEER_DEBOUNCE_MS = 300;
-
 export default function App() {
-  const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
+  const [selectedWords, setSelectedWords] = useState<string[]>([]);
+  const [resetKey, setResetKey] = useState(0);
   const [state, setState] = useState<ServerState>("stopped");
-  const [statusMessage, setStatusMessage] = useState(
-    "Ready. Enter a prompt and press Play."
-  );
-  const [lastSteeredPrompt, setLastSteeredPrompt] = useState("");
+  const [statusMessage, setStatusMessage] = useState("Preparing studio…");
+
   const socketRef = useRef<MusicSocket | null>(null);
-  const steerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleStatus = useCallback((payload: StatusPayload) => {
     setState(payload.state);
@@ -35,32 +34,52 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    socketRef.current = new MusicSocket(handleStatus, handleClose);
+    const socket = new MusicSocket(handleStatus, handleClose);
+    socketRef.current = socket;
+    socket.connect();
+    void socket.warm();
+
     return () => {
-      socketRef.current?.disconnect();
+      socket.disconnect();
       socketRef.current = null;
     };
   }, [handleStatus, handleClose]);
 
-  const promptTrimmed = prompt.trim();
-  const isBusy = state === "connecting";
+  const isConnecting = state === "connecting";
+  const isWarming = state === "warming";
+  const isBusy = isConnecting || isWarming;
   const isPlaying = state === "playing";
   const isError = state === "error";
+  const agentReady = !isConnecting;
+  const selectionFull = selectedWords.length >= MAX_MOOD_SELECTIONS;
 
   const canPlay =
     !isBusy &&
     !isPlaying &&
-    promptTrimmed.length > 0 &&
+    selectedWords.length >= MIN_MOOD_SELECTIONS &&
+    selectedWords.length <= MAX_MOOD_SELECTIONS &&
     (state === "stopped" || isError);
-  const canStop = isPlaying || state === "connecting";
-  const promptChanged =
-    promptTrimmed.length > 0 && promptTrimmed !== lastSteeredPrompt;
-  const canSteer = isPlaying && promptChanged && !isBusy;
+  const canStop = isPlaying || isBusy;
 
-  const onPlay = async () => {
+  const toggleWord = (word: string) => {
+    setSelectedWords((prev) => {
+      if (prev.includes(word)) {
+        return prev.filter((w) => w !== word);
+      }
+      if (prev.length >= MAX_MOOD_SELECTIONS) {
+        return prev;
+      }
+      return [...prev, word];
+    });
+  };
+
+  const startGeneration = async () => {
+    if (selectedWords.length < MIN_MOOD_SELECTIONS) return;
+
+    const prompt = moodsToPrompt(selectedWords);
+
     try {
-      setLastSteeredPrompt(promptTrimmed);
-      await socketRef.current?.start(promptTrimmed);
+      await socketRef.current?.start(prompt);
     } catch {
       setState("error");
       setStatusMessage("Failed to start playback.");
@@ -70,60 +89,43 @@ export default function App() {
   const onStop = async () => {
     try {
       await socketRef.current?.stop();
+      void socketRef.current?.warm();
     } catch {
       setState("error");
       setStatusMessage("Failed to stop playback.");
     }
   };
 
-  const sendSteer = useCallback(async () => {
-    if (!promptTrimmed || !socketRef.current) return;
-    try {
-      await socketRef.current.steer(promptTrimmed);
-      setLastSteeredPrompt(promptTrimmed);
-    } catch {
-      setState("error");
-      setStatusMessage("Failed to update sound.");
+  const onReset = () => {
+    setSelectedWords([]);
+    setResetKey((k) => k + 1);
+    if (isPlaying || isBusy) {
+      void onStop();
     }
-  }, [promptTrimmed]);
-
-  const onSteer = () => {
-    if (steerTimerRef.current) {
-      clearTimeout(steerTimerRef.current);
-    }
-    steerTimerRef.current = setTimeout(() => {
-      void sendSteer();
-    }, STEER_DEBOUNCE_MS);
   };
 
   return (
-    <main className="app-card">
-      <header className="app-header">
-        <h1>MaizYAgave</h1>
-        <p>Live music with Lyria</p>
-      </header>
+    <div className="studio-app word-cloud-app">
+      <Navbar agentReady={agentReady} onReset={onReset} />
 
-      <PromptForm
-        value={prompt}
-        onChange={setPrompt}
-        disabled={isBusy}
-      />
+      <main className="word-cloud-main">
+        <WordCloud
+          resetKey={resetKey}
+          selected={selectedWords}
+          onToggle={toggleWord}
+          onPlay={() => void startGeneration()}
+          onStop={() => void onStop()}
+          isPlaying={isPlaying}
+          isBusy={isBusy}
+          canPlay={canPlay}
+          canStop={canStop}
+          selectionFull={selectionFull}
+        />
 
-      <TransportControls
-        canPlay={canPlay}
-        canStop={canStop}
-        canSteer={canSteer}
-        onPlay={() => void onPlay()}
-        onStop={() => void onStop()}
-        onSteer={onSteer}
-      />
-
-      <StatusBar state={state} message={statusMessage} />
-
-      <p className="tip">
-        Tip: After you update the prompt, the mix may take 5–10 seconds to
-        settle into the new style.
-      </p>
-    </main>
+        <p className="studio-status" role="status">
+          {statusMessage}
+        </p>
+      </main>
+    </div>
   );
 }

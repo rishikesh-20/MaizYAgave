@@ -7,6 +7,7 @@ interface StatusBarProps {
 
 const stateLabels: Record<ServerState, string> = {
   connecting: "Connecting",
+  warming: "Warming up",
   playing: "Playing",
   paused: "Paused",
   stopped: "Stopped",

@@ -2,6 +2,7 @@ import { PcmPlayer } from "../audio/pcmPlayer";
 
 export type ServerState =
   | "connecting"
+  | "warming"
   | "playing"
   | "paused"
   | "stopped"
@@ -26,6 +27,7 @@ export class MusicSocket {
   private player = new PcmPlayer();
   private onStatus: StatusHandler;
   private onClose: CloseHandler;
+  private sessionReady = false;
 
   constructor(onStatus: StatusHandler, onClose: CloseHandler) {
     this.onStatus = onStatus;
@@ -34,6 +36,25 @@ export class MusicSocket {
 
   get isConnected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
+  }
+
+  /** Lyria is connected on the server (warm or playing). */
+  get hasWarmSession(): boolean {
+    return this.sessionReady;
+  }
+
+  private dispatchStatus(payload: StatusPayload): void {
+    const msg = payload.message ?? "";
+    if (msg.includes("Studio ready")) {
+      this.sessionReady = true;
+    } else if (payload.state === "stopped" || payload.state === "error") {
+      this.sessionReady = false;
+    }
+    this.onStatus(payload);
+  }
+
+  connect(): void {
+    this.ensureSocket();
   }
 
   private ensureSocket(): WebSocket {
@@ -52,7 +73,7 @@ export class MusicSocket {
         try {
           const payload = JSON.parse(event.data) as StatusPayload;
           if (payload.type === "status") {
-            this.onStatus(payload);
+            this.dispatchStatus(payload);
           }
         } catch {
           /* ignore */
@@ -65,12 +86,13 @@ export class MusicSocket {
     };
 
     socket.onclose = () => {
+      this.sessionReady = false;
       void this.player.reset();
       this.onClose();
     };
 
     socket.onerror = () => {
-      this.onStatus({
+      this.dispatchStatus({
         type: "status",
         state: "error",
         message: "WebSocket connection failed.",
@@ -102,21 +124,28 @@ export class MusicSocket {
     });
   }
 
+  async warm(): Promise<void> {
+    await this.sendWhenOpen({ type: "warm" });
+  }
+
   async start(prompt: string): Promise<void> {
     await this.player.ensureContext();
     await this.sendWhenOpen({ type: "start", prompt });
   }
 
   async steer(prompt: string): Promise<void> {
+    await this.player.ensureContext();
     await this.sendWhenOpen({ type: "steer", prompt });
   }
 
   async stop(): Promise<void> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       await this.player.reset();
+      this.sessionReady = false;
       return;
     }
     await this.sendWhenOpen({ type: "stop" });
+    this.sessionReady = false;
   }
 
   disconnect(): void {
@@ -124,6 +153,7 @@ export class MusicSocket {
       this.ws.close();
       this.ws = null;
     }
+    this.sessionReady = false;
     void this.player.reset();
   }
 }

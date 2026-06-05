@@ -31,13 +31,16 @@ MaizYAgave/
    # Edit .env and set GEMINI_API_KEY=...
    ```
 
-2. Install and run the backend:
+2. Install and run the backend (uses a virtual environment in `backend/.venv`):
 
    ```bash
    cd backend
-   pip install -e .
-   uvicorn app.main:app --reload --port 8000
+   python3.12 -m venv .venv   # or: python3 -m venv .venv
+   .venv/bin/pip install -e .
+   ./run.sh
    ```
+
+   Or manually: `.venv/bin/uvicorn app.main:app --reload --port 8000`
 
 3. Install and run the frontend (separate terminal):
 

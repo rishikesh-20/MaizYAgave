@@ -1,6 +1,6 @@
 const SAMPLE_RATE = 48000;
 const CHANNELS = 2;
-const PREBUFFER_CHUNKS = 2;
+const PREBUFFER_CHUNKS = 1;
 
 export class PcmPlayer {
   private context: AudioContext | null = null;
@@ -42,7 +42,7 @@ export class PcmPlayer {
       this.prebuffered += 1;
       if (this.prebuffered < PREBUFFER_CHUNKS) return;
       this.started = true;
-      this.nextPlayTime = ctx.currentTime + 0.08;
+      this.nextPlayTime = ctx.currentTime + 0.04;
     }
 
     this.flushQueue();

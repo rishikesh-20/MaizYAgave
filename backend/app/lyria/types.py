@@ -2,8 +2,10 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-ClientMessageType = Literal["start", "steer", "stop", "pause"]
-ServerState = Literal["connecting", "playing", "paused", "stopped", "error"]
+ClientMessageType = Literal["start", "steer", "stop", "pause", "warm"]
+ServerState = Literal[
+    "connecting", "warming", "playing", "paused", "stopped", "error"
+]
 
 
 class ClientMessage(BaseModel):

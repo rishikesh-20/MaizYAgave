@@ -54,11 +54,69 @@ class LyriaSession:
         self._session: Any = None
         self._pump_task: asyncio.Task[None] | None = None
         self._active = False
+        self._playing = False
         self._last_prompt_at = 0.0
 
     @property
+    def is_connected(self) -> bool:
+        return self._session is not None and self._active
+
+    @property
     def is_active(self) -> bool:
-        return self._active and self._session is not None
+        return self.is_connected
+
+    @property
+    def is_playing(self) -> bool:
+        return self._playing and self.is_connected
+
+    async def connect(
+        self,
+        on_chunk: Callable[[bytes], Awaitable[None]],
+        on_error: Callable[[str], Awaitable[None]],
+    ) -> None:
+        if self.is_connected:
+            return
+
+        self._connect_cm = self._client.aio.live.music.connect(model=MODEL)
+        self._session = await self._connect_cm.__aenter__()
+        self._active = True
+        self._playing = False
+        self._pump_task = asyncio.create_task(
+            self._pump_audio(on_chunk, on_error),
+            name="lyria-audio-pump",
+        )
+
+    async def prepare(self, prompt: str) -> None:
+        """Configure prompts without starting playback (used for warm-up)."""
+        if not self.is_connected:
+            raise RuntimeError("Lyria session not connected")
+        await self._set_prompt(prompt)
+        await self._session.set_music_generation_config(
+            config=types.LiveMusicGenerationConfig(temperature=1.0)
+        )
+
+    async def begin_generation(self, prompt: str) -> None:
+        """Apply prompt and start playback if not already playing."""
+        if not self.is_connected:
+            raise RuntimeError("Lyria session not connected")
+        await self._set_prompt(prompt)
+        if not self._playing:
+            await self._session.play()
+            self._playing = True
+
+    async def steer(self, prompt: str) -> None:
+        if not self.is_connected:
+            raise RuntimeError("No active Lyria session")
+        await self._set_prompt(prompt)
+
+    async def warm(
+        self,
+        prompt: str,
+        on_chunk: Callable[[bytes], Awaitable[None]],
+        on_error: Callable[[str], Awaitable[None]],
+    ) -> None:
+        await self.connect(on_chunk, on_error)
+        await self.prepare(prompt)
 
     async def start(
         self,
@@ -66,29 +124,16 @@ class LyriaSession:
         on_chunk: Callable[[bytes], Awaitable[None]],
         on_error: Callable[[str], Awaitable[None]],
     ) -> None:
-        if self.is_active:
+        """Cold start: connect, configure, and begin playback."""
+        if self.is_connected:
             await self.stop()
-
-        self._connect_cm = self._client.aio.live.music.connect(model=MODEL)
-        self._session = await self._connect_cm.__aenter__()
-        self._active = True
-        self._pump_task = asyncio.create_task(
-            self._pump_audio(on_chunk, on_error),
-            name="lyria-audio-pump",
-        )
-        await self._set_prompt(prompt)
-        await self._session.set_music_generation_config(
-            config=types.LiveMusicGenerationConfig(temperature=1.0)
-        )
-        await self._session.play()
-
-    async def steer(self, prompt: str) -> None:
-        if not self.is_active:
-            raise RuntimeError("No active Lyria session")
-        await self._set_prompt(prompt)
+        await self.connect(on_chunk, on_error)
+        await self.prepare(prompt)
+        await self.begin_generation(prompt)
 
     async def stop(self) -> None:
         self._active = False
+        self._playing = False
         if self._pump_task and not self._pump_task.done():
             self._pump_task.cancel()
             try:
