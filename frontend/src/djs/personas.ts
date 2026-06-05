@@ -1,5 +1,10 @@
 export type DjId = "nova" | "lumen" | "pulse" | "volt" | "zephyr";
 
+export interface Waypoint {
+  x: number;
+  y: number;
+}
+
 export interface Persona {
   id: DjId;
   name: string;
@@ -8,8 +13,14 @@ export interface Persona {
   bpmMax: number;
   palette: { body: string; accent: string; glow: string };
   promptSeeds: string;
-  homeDesk: { x: number; y: number };
+  homeDesk: Waypoint;
+  spritePath: string;
+  /** Waypoint path from homeDesk to the booth-front. First entry = home, last = booth-front. */
+  walkPath: Waypoint[];
 }
+
+/** Booth approach position (just south of the platter). */
+export const BOOTH_FRONT: Waypoint = { x: 50, y: 50 };
 
 export const PERSONAS: Record<DjId, Persona> = {
   nova: {
@@ -22,6 +33,13 @@ export const PERSONAS: Record<DjId, Persona> = {
     promptSeeds:
       "80s synthwave, gated reverb drums, analog pads, neon arpeggios, retro chorus guitar",
     homeDesk: { x: 14, y: 26 },
+    spritePath: "/sprites/nova.png",
+    walkPath: [
+      { x: 14, y: 26 },
+      { x: 14, y: 40 },
+      { x: 50, y: 40 },
+      BOOTH_FRONT,
+    ],
   },
   lumen: {
     id: "lumen",
@@ -33,6 +51,13 @@ export const PERSONAS: Record<DjId, Persona> = {
     promptSeeds:
       "deep ambient, warm evolving pads, soft granular textures, sub bass, sparse",
     homeDesk: { x: 30, y: 26 },
+    spritePath: "/sprites/lumen.png",
+    walkPath: [
+      { x: 30, y: 26 },
+      { x: 30, y: 40 },
+      { x: 50, y: 40 },
+      BOOTH_FRONT,
+    ],
   },
   pulse: {
     id: "pulse",
@@ -44,6 +69,13 @@ export const PERSONAS: Record<DjId, Persona> = {
     promptSeeds:
       "deep house, four-on-the-floor kick, warm rolling bassline, jazzy chords, vinyl crackle",
     homeDesk: { x: 14, y: 60 },
+    spritePath: "/sprites/pulse.png",
+    walkPath: [
+      { x: 14, y: 60 },
+      { x: 14, y: 56 },
+      { x: 50, y: 56 },
+      BOOTH_FRONT,
+    ],
   },
   volt: {
     id: "volt",
@@ -55,6 +87,13 @@ export const PERSONAS: Record<DjId, Persona> = {
     promptSeeds:
       "driving industrial techno, hypnotic loop, distorted kick, dark atmosphere, modular synth",
     homeDesk: { x: 30, y: 60 },
+    spritePath: "/sprites/volt.png",
+    walkPath: [
+      { x: 30, y: 60 },
+      { x: 30, y: 56 },
+      { x: 50, y: 56 },
+      BOOTH_FRONT,
+    ],
   },
   zephyr: {
     id: "zephyr",
@@ -66,6 +105,13 @@ export const PERSONAS: Record<DjId, Persona> = {
     promptSeeds:
       "liquid drum and bass, amen breaks, atmospheric pads, rolling sub bass, euphoric",
     homeDesk: { x: 78, y: 26 },
+    spritePath: "/sprites/zephyr.png",
+    walkPath: [
+      { x: 78, y: 26 },
+      { x: 78, y: 40 },
+      { x: 50, y: 40 },
+      BOOTH_FRONT,
+    ],
   },
 };
 

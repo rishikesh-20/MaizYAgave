@@ -17,23 +17,21 @@ import {
 } from "./djs/personas";
 import "./App.css";
 
-const STEER_DEBOUNCE_MS = 350;
-const WARMING_MS = 6000;
+const WALK_DURATION_MS = 6000;
 
 export default function App() {
   const [state, setState] = useState<ServerState>("stopped");
   const [statusMessage, setStatusMessage] = useState(
-    "Spin the mood wheel. A DJ will take the booth.",
+    "Spin the mood wheel. A DJ will walk to the booth.",
   );
   const [pick, setPick] = useState<WheelPick | null>(null);
   const [activeDjId, setActiveDjId] = useState<DjId | null>(null);
   const [bpm, setBpm] = useState<number | null>(null);
-  const [isWarming, setIsWarming] = useState(false);
+
   const socketRef = useRef<MusicSocket | null>(null);
-  const steerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const warmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastPromptRef = useRef<string>("");
   const isPlayingRef = useRef(false);
+  const pendingPromptRef = useRef<string>("");
+  const arrivedDjRef = useRef<DjId | null>(null);
 
   const handleStatus = useCallback((payload: StatusPayload) => {
     setState(payload.state);
@@ -58,64 +56,64 @@ export default function App() {
   const isBusy = state === "connecting";
   const isPlaying = state === "playing";
 
-  function triggerWarm() {
-    setIsWarming(true);
-    if (warmTimerRef.current) clearTimeout(warmTimerRef.current);
-    warmTimerRef.current = setTimeout(() => setIsWarming(false), WARMING_MS);
-  }
+  // Warming = there's an active DJ but they haven't been confirmed arrived
+  // (or audio isn't yet flowing).
+  const isWarming =
+    activeDjId !== null && (arrivedDjRef.current !== activeDjId || !isPlaying);
 
-  async function startWithPrompt(prompt: string) {
-    lastPromptRef.current = prompt;
-    triggerWarm();
+  async function fireStartOrSteer(prompt: string) {
+    if (!prompt) return;
     try {
-      await socketRef.current?.start(prompt);
+      if (isPlayingRef.current) {
+        await socketRef.current?.steer(prompt);
+      } else {
+        await socketRef.current?.start(prompt);
+      }
     } catch {
       setState("error");
-      setStatusMessage("Failed to start playback.");
-    }
-  }
-
-  async function steerWithPrompt(prompt: string) {
-    if (prompt === lastPromptRef.current) return;
-    lastPromptRef.current = prompt;
-    triggerWarm();
-    try {
-      await socketRef.current?.steer(prompt);
-    } catch {
-      setState("error");
-      setStatusMessage("Failed to update sound.");
+      setStatusMessage("Failed to play music.");
     }
   }
 
   function handlePick(p: WheelPick) {
-    // CRITICAL: prime AudioContext synchronously inside this click handler.
-    // The debounce below would otherwise drop us outside the user gesture
-    // and the browser would refuse to start audio.
+    // Prime AudioContext synchronously inside the click handler.
+    // Browsers only allow AudioContext to resume during a trusted user gesture;
+    // doing it after the walk completes would silently fail. Keep this first.
     void socketRef.current?.primeAudio();
 
     setPick(p);
     const dj = PERSONAS[p.djId];
     const nextBpm = clampBpm(dj, p.energy);
     setBpm(nextBpm);
-    setActiveDjId(p.djId);
-    setStatusMessage(`${dj.name} taking the booth — ${p.mood.label}`);
-
     const prompt = buildPrompt(dj, p.mood, nextBpm);
-    if (steerTimerRef.current) clearTimeout(steerTimerRef.current);
-    steerTimerRef.current = setTimeout(() => {
-      if (isPlayingRef.current) {
-        void steerWithPrompt(prompt);
-      } else {
-        void startWithPrompt(prompt);
-      }
-    }, STEER_DEBOUNCE_MS);
+    pendingPromptRef.current = prompt;
+
+    if (activeDjId === p.djId && arrivedDjRef.current === p.djId) {
+      // Same DJ, already at booth: steer immediately with the new BPM/mood.
+      setStatusMessage(`${dj.name} adjusting — ${p.mood.label}`);
+      void fireStartOrSteer(prompt);
+      return;
+    }
+
+    // New DJ (or same DJ still walking): reset arrival state and start the walk.
+    arrivedDjRef.current = null;
+    setActiveDjId(p.djId);
+    setStatusMessage(`${dj.name} walking to the booth — ${p.mood.label}`);
   }
+
+  const handleArrived = useCallback(() => {
+    if (!activeDjId) return;
+    arrivedDjRef.current = activeDjId;
+    void fireStartOrSteer(pendingPromptRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeDjId]);
 
   async function onStop() {
     try {
       await socketRef.current?.stop();
       setActiveDjId(null);
-      setIsWarming(false);
+      arrivedDjRef.current = null;
+      pendingPromptRef.current = "";
     } catch {
       setState("error");
       setStatusMessage("Failed to stop playback.");
@@ -128,14 +126,17 @@ export default function App() {
         <Room
           activeDjId={activeDjId}
           bpm={bpm ?? undefined}
+          isPlaying={isPlaying}
           isWarming={isWarming}
+          walkDurationMs={WALK_DURATION_MS}
+          onArrived={handleArrived}
         />
       </div>
 
       <aside className="stage-right">
         <header className="app-header">
           <h1>Mood Ring DJ</h1>
-          <p>Pick a mood. A DJ takes the booth.</p>
+          <p>Pick a mood. A DJ walks to the booth.</p>
         </header>
 
         <MoodWheel
@@ -166,7 +167,7 @@ export default function App() {
 
         <TransportControls
           canPlay={false}
-          canStop={isPlaying || isBusy}
+          canStop={isPlaying || isBusy || activeDjId !== null}
           canSteer={false}
           onPlay={() => undefined}
           onStop={() => void onStop()}

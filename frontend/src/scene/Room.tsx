@@ -1,23 +1,70 @@
 import { DJ_IDS, PERSONAS, type DjId, type Persona } from "../djs/personas";
 import { Avatar } from "./Avatar";
 import { Booth, BOOTH_POS } from "./Booth";
+import { Crowd } from "./Crowd";
+import { Lasers } from "./Lasers";
 import { Spotlight } from "./Spotlight";
+import { Subwoofers } from "./Subwoofers";
+import { WalkingDj } from "./WalkingDj";
 
 interface Props {
   activeDjId: DjId | null;
   bpm?: number;
+  isPlaying: boolean;
   isWarming?: boolean;
+  walkDurationMs?: number;
+  onArrived?: () => void;
 }
 
-export function Room({ activeDjId, bpm, isWarming }: Props) {
+export function Room({
+  activeDjId,
+  bpm,
+  isPlaying,
+  isWarming,
+  walkDurationMs,
+  onArrived,
+}: Props) {
   const activeDj: Persona | null = activeDjId ? PERSONAS[activeDjId] : null;
+  const effectiveBpm = bpm ?? 120;
+  const dynamicsOn = isPlaying || !!isWarming;
 
   return (
-    <div className="room">
-      <div className="room-floor" />
+    <div className={`room ${isPlaying ? "room--playing" : ""}`}>
+      {/* Background layers — drawn back to front */}
       <div className="room-wall" />
+      <Subwoofers
+        bpm={effectiveBpm}
+        enabled={dynamicsOn}
+        color={activeDj?.palette.glow ?? "#5af7ff"}
+      />
+      <div className="room-floor" />
 
-      {/* Desks — drawn under avatars */}
+      {/* DJ desk posters (palette tinted) above each desk. Cuttable. */}
+      {DJ_IDS.map((id) => {
+        const p = PERSONAS[id];
+        return (
+          <div
+            key={`poster-${id}`}
+            className="poster"
+            style={{
+              left: `${p.homeDesk.x}%`,
+              top: `${p.homeDesk.y - 12}%`,
+              borderColor: p.palette.glow,
+              boxShadow: `0 0 6px ${p.palette.glow}80`,
+            }}
+          >
+            <div
+              className="poster-fill"
+              style={{
+                background: `linear-gradient(160deg, ${p.palette.body} 0%, ${p.palette.glow} 100%)`,
+              }}
+            />
+            <div className="poster-label">{p.name}</div>
+          </div>
+        );
+      })}
+
+      {/* Desks */}
       {DJ_IDS.map((id) => {
         const p = PERSONAS[id];
         return (
@@ -26,16 +73,17 @@ export function Room({ activeDjId, bpm, isWarming }: Props) {
             className="desk"
             style={{
               left: `${p.homeDesk.x}%`,
-              top: `${p.homeDesk.y + 8}%`,
+              top: `${p.homeDesk.y + 4}%`,
             }}
           />
         );
       })}
 
-      {/* Booth marker is drawn before active avatar so avatar sits on top */}
-      <Booth activeDj={activeDj} bpm={bpm} isWarming={isWarming} />
+      {/* Crowd in front of the booth */}
+      <Crowd bpm={effectiveBpm} enabled={dynamicsOn} />
 
-      {/* Spotlight on the booth — only when a DJ is active */}
+      {/* Lasers + spotlight render under the booth + avatars */}
+      <Lasers color={activeDj?.palette.glow ?? "#5af7ff"} active={dynamicsOn} />
       <Spotlight
         x={BOOTH_POS.x}
         y={BOOTH_POS.y}
@@ -43,30 +91,33 @@ export function Room({ activeDjId, bpm, isWarming }: Props) {
         active={!!activeDj}
       />
 
-      {/* Idle DJs at their home desks. Active DJ is also rendered at the booth. */}
-      {DJ_IDS.map((id) => {
+      {/* Booth (under the active DJ) */}
+      <Booth activeDj={activeDj} bpm={bpm} isWarming={isWarming} />
+
+      {/* Idle DJs at their desks (everyone except the currently active one) */}
+      {DJ_IDS.filter((id) => id !== activeDjId).map((id) => {
         const p = PERSONAS[id];
-        const isActive = id === activeDjId;
         return (
           <Avatar
             key={`home-${id}`}
             persona={p}
             x={p.homeDesk.x}
             y={p.homeDesk.y}
-            active={false}
-            scale={isActive ? 0.7 : 1}
+            direction="down"
+            isMoving={false}
+            bpm={effectiveBpm}
           />
         );
       })}
 
-      {activeDj && (
-        <Avatar
-          key={`booth-${activeDj.id}`}
+      {/* Active DJ — walks from desk to booth */}
+      {activeDj && onArrived && (
+        <WalkingDj
+          key={activeDj.id}
           persona={activeDj}
-          x={BOOTH_POS.x}
-          y={BOOTH_POS.y - 6}
-          active
-          scale={1.25}
+          bpm={effectiveBpm}
+          walkDurationMs={walkDurationMs}
+          onArrived={onArrived}
         />
       )}
     </div>
