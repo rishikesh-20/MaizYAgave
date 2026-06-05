@@ -88,6 +88,11 @@ export default function App() {
   }
 
   function handlePick(p: WheelPick) {
+    // CRITICAL: prime AudioContext synchronously inside this click handler.
+    // The debounce below would otherwise drop us outside the user gesture
+    // and the browser would refuse to start audio.
+    void socketRef.current?.primeAudio();
+
     setPick(p);
     const dj = PERSONAS[p.djId];
     const nextBpm = clampBpm(dj, p.energy);
