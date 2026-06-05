@@ -1,34 +1,54 @@
 import type { Persona } from "../djs/personas";
+import { SPRITE_FRAME_PX, useSprite } from "./useSprite";
+import type { Direction } from "./useWalkTween";
 
 interface Props {
   persona: Persona;
   x: number; // percent
   y: number; // percent
+  direction?: Direction;
+  isMoving?: boolean;
   active?: boolean;
   scale?: number;
+  bpm?: number;
+  showLabel?: boolean;
 }
 
-// Placeholder pixel-style avatar built from divs. Real Itch.io sprites can
-// drop in by reading persona.spritePath when added — see persona schema.
-export function Avatar({ persona, x, y, active, scale = 1 }: Props) {
-  const { body, accent, glow } = persona.palette;
+export function Avatar({
+  persona,
+  x,
+  y,
+  direction = "down",
+  isMoving = false,
+  active = false,
+  scale = 1,
+  bpm,
+  showLabel = true,
+}: Props) {
+  const frame = useSprite(direction, { isMoving, bpm });
+
   return (
     <div
-      className="avatar"
+      className={`avatar2 ${active ? "avatar2--active" : ""}`}
       style={{
         left: `${x}%`,
         top: `${y}%`,
-        transform: `translate(-50%, -50%) scale(${scale})`,
-        filter: active ? `drop-shadow(0 0 12px ${glow})` : undefined,
+        transform: `translate(-50%, -100%) scale(${scale})`,
+        filter: active ? `drop-shadow(0 0 10px ${persona.palette.glow})` : undefined,
       }}
       title={`${persona.name} — ${persona.genre}`}
     >
-      <div className="avatar-head" style={{ background: accent }} />
-      <div className="avatar-body" style={{ background: body }}>
-        <div className="avatar-belt" style={{ background: accent }} />
-      </div>
-      <div className="avatar-shadow" />
-      <div className="avatar-label">{persona.name}</div>
+      <div
+        className="avatar2-sprite"
+        style={{
+          width: SPRITE_FRAME_PX,
+          height: SPRITE_FRAME_PX,
+          backgroundImage: `url(${persona.spritePath})`,
+          backgroundSize: frame.bgSize,
+          backgroundPosition: `${frame.bgX}px ${frame.bgY}px`,
+        }}
+      />
+      {showLabel && <div className="avatar2-label">{persona.name}</div>}
     </div>
   );
 }

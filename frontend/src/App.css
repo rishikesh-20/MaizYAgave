@@ -155,19 +155,121 @@
   image-rendering: pixelated;
 }
 
+.room {
+  transition: transform 600ms cubic-bezier(.2,.9,.2,1.2);
+}
+.room--playing { transform: scale(1.03); }
+
 .room-floor {
   position: absolute; inset: 35% 0 0 0;
   background:
-    repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0 8px, transparent 8px 16px),
+    repeating-conic-gradient(rgba(90,247,255,0.05) 0deg 90deg, transparent 90deg 180deg) 0 0/24px 24px,
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.025) 0 6px, transparent 6px 12px),
     linear-gradient(180deg, #2a1e3a 0%, #170e22 100%);
   border-top: 2px solid rgba(90, 247, 255, 0.25);
+  z-index: 0;
 }
 
 .room-wall {
   position: absolute; inset: 0 0 65% 0;
   background:
-    repeating-linear-gradient(90deg, rgba(0,0,0,0.18) 0 16px, transparent 16px 32px),
-    linear-gradient(180deg, #0c0e1c 0%, #1a1d2e 100%);
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.28) 0 24px, transparent 24px 48px),
+    linear-gradient(180deg, #07081a 0%, #14172a 100%);
+  border-bottom: 1px solid rgba(0,0,0,0.6);
+}
+
+/* Subwoofer stack (along the back wall) */
+.subwoofer {
+  position: absolute;
+  top: 4%;
+  width: 60px; height: 90px;
+  transform-origin: center bottom;
+  transition: transform 80ms linear;
+  z-index: 1;
+}
+.subwoofer-cone {
+  width: 60px; height: 90px;
+  background:
+    radial-gradient(circle at 50% 22%, #2a2c40 0 6px, #14152a 7px 14px, #0a0b14 15px 100%),
+    linear-gradient(180deg, #1a1d2e 0%, #0a0b14 100%);
+  border: 2px solid #0a0b14;
+  border-radius: 8px 8px 4px 4px;
+  box-shadow: inset 0 -8px 0 rgba(0,0,0,0.4), 0 4px 0 rgba(0,0,0,0.5);
+}
+.subwoofer-cone::before,
+.subwoofer-cone::after {
+  content: "";
+  position: absolute;
+  left: 50%; transform: translateX(-50%);
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #2a2c40 0 6px, #0a0b14 7px 12px, #1a1d2e 13px 100%);
+}
+.subwoofer-cone::before { top: 8px; }
+.subwoofer-cone::after  { top: 50px; width: 22px; height: 22px; }
+
+/* Per-DJ posters above their desks */
+.poster {
+  position: absolute;
+  width: 38px; height: 26px;
+  transform: translate(-50%, 0);
+  border: 2px solid #5af7ff;
+  border-radius: 3px;
+  background: #0a0b14;
+  overflow: hidden;
+  z-index: 1;
+}
+.poster-fill {
+  position: absolute; inset: 2px;
+  border-radius: 2px;
+  opacity: 0.85;
+}
+.poster-label {
+  position: absolute; bottom: 1px; left: 0; right: 0;
+  text-align: center;
+  font-size: 6px;
+  letter-spacing: 1px;
+  color: #0a0b14;
+  font-weight: 800;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+  z-index: 1;
+}
+
+/* Lasers — sweeping beams from the back corners */
+.laser {
+  position: absolute;
+  top: 8%;
+  width: 60%;
+  height: 4px;
+  transform-origin: 0% 50%;
+  opacity: 0;
+  transition: opacity 400ms ease;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  filter: blur(1px);
+  z-index: 1;
+}
+.laser--left  { left: 4%;   animation: laser-sweep-l 7s ease-in-out infinite; }
+.laser--right { right: 4%; transform-origin: 100% 50%;
+                            animation: laser-sweep-r 7s ease-in-out infinite; }
+.laser--on    { opacity: 0.85; }
+
+@keyframes laser-sweep-l {
+  0%, 100% { transform: rotate(18deg); }
+  50%      { transform: rotate(42deg); }
+}
+@keyframes laser-sweep-r {
+  0%, 100% { transform: rotate(-18deg); }
+  50%      { transform: rotate(-42deg); }
+}
+
+/* Crowd dancers */
+.crowd-dancer {
+  position: absolute;
+  image-rendering: pixelated;
+  z-index: 2;
+  pointer-events: none;
+  transition: top 80ms linear;
 }
 
 .desk {
@@ -180,7 +282,31 @@
   box-shadow: 0 4px 0 rgba(0,0,0,0.4);
 }
 
-/* Avatars */
+/* Sprite-driven avatar (avatar2) */
+.avatar2 {
+  position: absolute;
+  transform-origin: center bottom;
+  transition: filter 220ms ease;
+  pointer-events: none;
+  z-index: 3;
+}
+.avatar2--active { z-index: 4; }
+.avatar2-sprite {
+  image-rendering: pixelated;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 2px 0 rgba(0,0,0,0.5));
+}
+.avatar2-label {
+  margin-top: 2px;
+  text-align: center;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: var(--ink-dim);
+  white-space: nowrap;
+  text-shadow: 0 1px 0 #000;
+}
+
+/* Legacy avatar (kept so unused-Avatar styles don't 404 if referenced) */
 .avatar {
   position: absolute;
   width: 36px; height: 56px;
