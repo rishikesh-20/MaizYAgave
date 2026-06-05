@@ -102,6 +102,14 @@ export class MusicSocket {
     });
   }
 
+  /** Must be called synchronously from a user-gesture handler (click).
+   *  Browsers only allow AudioContext to be created/resumed during a
+   *  trusted user gesture; if we wait for a debounce timer the gesture
+   *  expires and the context stays suspended forever. */
+  primeAudio(): Promise<AudioContext> {
+    return this.player.ensureContext();
+  }
+
   async start(prompt: string): Promise<void> {
     await this.player.ensureContext();
     await this.sendWhenOpen({ type: "start", prompt });
