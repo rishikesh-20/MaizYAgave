@@ -2,7 +2,12 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
+import certifi
 from dotenv import load_dotenv
+
+# python.org macOS builds often ship without a usable CA bundle; certifi fixes SSL.
+os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
 
 _root = Path(__file__).resolve().parents[2]
 load_dotenv(_root / ".env")

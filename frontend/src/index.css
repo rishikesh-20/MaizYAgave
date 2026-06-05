@@ -13,7 +13,8 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(ellipse at top, #2d2419 0%, #1a1410 55%);
+  background: #000;
+  overflow-x: hidden;
 }
 
 #root {
@@ -21,5 +22,5 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
+  padding: 0;
 }
